@@ -1,0 +1,27 @@
+<svg width="384" height="512" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="384" height="512" fill="#f1f5f9"/>
+  
+  <!-- Phone Frame -->
+  <rect x="20" y="40" width="344" height="432" rx="30" fill="white" stroke="#cbd5e1" stroke-width="2"/>
+  
+  <!-- Status Bar -->
+  <rect x="40" y="60" width="304" height="20" rx="10" fill="#e2e8f0"/>
+  
+  <!-- App Header -->
+  <rect x="40" y="100" width="304" height="40" rx="8" fill="#3b82f6"/>
+  <text x="192" y="125" font-family="Arial, sans-serif" font-size="16" fill="white" text-anchor="middle" font-weight="bold">LocalSync</text>
+  
+  <!-- Content Area -->
+  <rect x="40" y="160" width="304" height="200" rx="8" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1"/>
+  <text x="192" y="190" font-family="Arial, sans-serif" font-size="14" fill="#64748b" text-anchor="middle">Shared Text</text>
+  <rect x="60" y="210" width="264" height="120" rx="4" fill="white" stroke="#cbd5e1" stroke-width="1"/>
+  
+  <!-- Files Section -->
+  <rect x="40" y="380" width="304" height="80" rx="8" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1"/>
+  <text x="192" y="405" font-family="Arial, sans-serif" font-size="14" fill="#64748b" text-anchor="middle">Files</text>
+  <rect x="60" y="420" width="264" height="30" rx="4" fill="white" stroke="#cbd5e1" stroke-width="1"/>
+  
+  <!-- Bottom Text -->
+  <text x="192" y="495" font-family="Arial, sans-serif" font-size="12" fill="#94a3b8" text-anchor="middle">Phone Preview</text>
+</svg>

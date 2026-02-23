@@ -1,36 +1,242 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# LocalSync - Local Network Clipboard
 
-## Getting Started
+A modern, full-stack local network clipboard application. Share text and files seamlessly across all devices on your local network with real-time synchronization, password protection, and a beautiful dark mode interface.
 
-First, run the development server:
+![LocalSync](https://img.shields.io/badge/Next.js-16.1.6-black?style=flat-square&logo=next.js)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue?style=flat-square&logo=typescript)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind-4.0-38bdf8?style=flat-square&logo=tailwind-css)
 
+## ✨ Features
+
+### Core Functionality
+- **🔄 Real-time Sync**: Type text or upload files and see changes instantly across all devices (500ms debounce)
+- **📱 IP-Based Rooms**: Automatically groups devices by IP address - no registration needed
+- **📁 File Sharing**: Upload, download, and delete files with drag-and-drop support (up to 100MB)
+- **🔒 Password Protection**: Secure your clipboard with SHA-256 encrypted passwords
+- **🌓 Dark Mode**: Beautiful light and dark themes with system detection
+- **📊 Debug Console**: Professional debugging tools with stats and diagnostics
+- **💬 Support Center**: Comprehensive help center with FAQ and contact form
+
+### User Experience
+- **Zero Setup**: No account creation, no downloads - just open and start syncing
+- **Fully Responsive**: Optimized for mobile, tablet, and desktop
+- **Modern UI**: Clean, minimalist design with Shadcn UI components
+- **Fast Performance**: Optimized with Next.js 16 and Turbopack
+- **Accessibility**: WCAG compliant with keyboard navigation support
+
+## 🚀 Quick Start
+
+### Prerequisites
+- Node.js 18+ and npm
+
+### Installation
+
+1. Clone the repository:
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone <your-repo-url>
+cd localsync
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2. Install dependencies:
+```bash
+npm install
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+3. Run the development server:
+```bash
+npm run dev
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+4. Open [http://localhost:3000](http://localhost:3000) in your browser
 
-## Learn More
+## 🛠️ Tech Stack
 
-To learn more about Next.js, take a look at the following resources:
+- **Framework**: Next.js 16.1.6 (App Router with Turbopack)
+- **Language**: TypeScript 5
+- **Styling**: Tailwind CSS 4
+- **UI Components**: Shadcn UI
+- **Icons**: Lucide React
+- **Themes**: next-themes
+- **Notifications**: Sonner
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 📁 Project Structure
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```
+localsync/
+├── app/
+│   ├── api/
+│   │   ├── debug/route.ts     # Debug API endpoint
+│   │   ├── sync/route.ts      # Main sync API endpoint
+│   │   └── upload/route.ts    # File upload endpoint
+│   ├── debug/page.tsx         # Debug console page
+│   ├── features/page.tsx      # Features showcase page
+│   ├── support/page.tsx       # Support & help center
+│   ├── layout.tsx             # Root layout with metadata
+│   ├── page.tsx               # Home page
+│   └── globals.css            # Global styles
+├── components/
+│   ├── features/              # Feature page components
+│   │   ├── AllFeaturesGrid.tsx
+│   │   ├── FooterCTA.tsx
+│   │   ├── HeroSection.tsx
+│   │   ├── HowItWorksSection.tsx
+│   │   ├── StatsSection.tsx
+│   │   └── TestimonialsSection.tsx
+│   ├── ui/                    # Shadcn UI components
+│   ├── Dashboard.tsx          # Main dashboard component
+│   ├── FileUploadZone.tsx     # Drag-and-drop file upload
+│   ├── Navbar.tsx             # Navigation bar
+│   ├── PasswordDialog.tsx     # Password input dialog
+│   ├── SettingsDialog.tsx     # Settings modal
+│   ├── ThemeProvider.tsx      # Theme context provider
+│   └── ThemeToggle.tsx        # Dark mode toggle
+├── lib/
+│   ├── realtime-service.ts    # Backend sync logic
+│   ├── password-utils.ts      # Password hashing utilities
+│   └── utils.ts               # Utility functions
+├── types/
+│   └── index.ts               # TypeScript type definitions
+└── public/
+    ├── uploads/               # Uploaded files directory
+    └── testimonials/          # Testimonial images
+```
 
-## Deploy on Vercel
+## 🔌 API Endpoints
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### GET /api/sync
+Fetches the current sync data for the client's IP address.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "text": "string",
+    "files": [],
+    "isLocked": false,
+    "lastUpdated": 1234567890
+  }
+}
+```
+
+### POST /api/sync
+Updates sync data. Accepts the following actions:
+
+**Actions:**
+- `updateText`: Update the shared text
+- `addFile`: Add a file to the shared list
+- `deleteFile`: Remove a file from the shared list
+- `setPassword`: Enable password protection (requires passwordHash)
+- `removePassword`: Disable password protection
+- `verifyPassword`: Verify a password (returns isValid boolean)
+
+### POST /api/upload
+Handles file uploads and returns file metadata.
+
+**Request:** multipart/form-data with file
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "id": "string",
+    "name": "string",
+    "size": 12345,
+    "url": "/uploads/filename"
+  }
+}
+```
+
+### GET /api/debug
+Returns the client's IP address.
+
+### POST /api/debug
+Debug operations. Accepts actions:
+- `getStats`: Get statistics
+- `resetPassword`: Reset password
+- `deleteFiles`: Delete all files
+- `unlinkIPs`: Unlink associated IPs
+- `resetEverything`: Complete reset
+
+## 🌐 Deployment
+
+### Vercel (Recommended)
+
+1. Push your code to GitHub
+2. Import your repository in [Vercel](https://vercel.com)
+3. Vercel will auto-detect Next.js and configure build settings
+4. Deploy!
+
+### Environment Variables
+No environment variables required for basic functionality.
+
+### Build Command
+```bash
+npm run build
+```
+
+### Start Command
+```bash
+npm start
+```
+
+## 🔧 Production Considerations
+
+For production deployment, consider these enhancements:
+
+1. **Persistent Storage**: Replace in-memory storage with Redis or a database
+2. **File Storage**: Use S3, Cloudflare R2, or similar for file uploads
+3. **WebSocket**: Implement WebSocket for true real-time sync instead of polling
+4. **Rate Limiting**: Add rate limiting to prevent abuse
+5. **File Validation**: Implement virus scanning and file type validation
+6. **Analytics**: Add analytics to track usage
+7. **Monitoring**: Set up error tracking (Sentry, LogRocket)
+8. **CDN**: Use a CDN for static assets
+9. **Backup**: Implement automated backups
+10. **SSL**: Ensure HTTPS is enabled
+
+## 📱 Mobile Optimization
+
+The application is fully optimized for mobile devices:
+- Responsive breakpoints: `sm` (640px), `md` (768px), `lg` (1024px)
+- Touch-friendly UI elements
+- Mobile-optimized navigation with hamburger menu
+- Optimized images with Next.js Image component
+- Fast loading with code splitting
+
+## 🎨 Customization
+
+### Themes
+Edit `app/globals.css` to customize colors and themes.
+
+### Components
+All UI components are in `components/ui/` and can be customized.
+
+### Branding
+Update metadata in `app/layout.tsx` for SEO and social sharing.
+
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## 📄 License
+
+MIT License - feel free to use this project for personal or commercial purposes.
+
+## 🙏 Acknowledgments
+
+- Inspired by [SSAVR](https://ssavr.com)
+- Built with [Next.js](https://nextjs.org)
+- UI components from [Shadcn UI](https://ui.shadcn.com)
+- Icons from [Lucide](https://lucide.dev)
+
+## 📞 Support
+
+- Visit the `/support` page for help
+- Check the `/debug` page for diagnostics
+- View all features at `/features`
+
+---
+
+Made with ❤️ by the LocalSync Team

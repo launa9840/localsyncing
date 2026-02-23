@@ -1,0 +1,13 @@
+<svg width="200" height="200" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background Circle -->
+  <circle cx="100" cy="100" r="100" fill="#a855f7"/>
+  
+  <!-- Face -->
+  <circle cx="100" cy="85" r="35" fill="#c084fc"/>
+  
+  <!-- Body -->
+  <ellipse cx="100" cy="160" rx="50" ry="45" fill="#c084fc"/>
+  
+  <!-- Initials -->
+  <text x="100" y="110" font-family="Arial, sans-serif" font-size="48" fill="white" text-anchor="middle" font-weight="bold">DB</text>
+</svg>
