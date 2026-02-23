@@ -28,6 +28,7 @@ A modern, full-stack local network clipboard application. Share text and files s
 
 ### Prerequisites
 - Node.js 18+ and npm
+- Supabase account (free tier works great!)
 
 ### Installation
 
@@ -42,12 +43,22 @@ cd localsync
 npm install
 ```
 
-3. Run the development server:
+3. Set up Supabase Storage (required for file uploads):
+   - Follow the guide in `SUPABASE_SETUP.md` (5 minutes)
+   - Or see `SUPABASE_QUICK_REFERENCE.md` for quick setup
+
+4. Create `.env.local` file:
+```env
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
+```
+
+5. Run the development server:
 ```bash
 npm run dev
 ```
 
-4. Open [http://localhost:3000](http://localhost:3000) in your browser
+6. Open [http://localhost:3000](http://localhost:3000) in your browser
 
 ## 🛠️ Tech Stack
 
@@ -58,6 +69,7 @@ npm run dev
 - **Icons**: Lucide React
 - **Themes**: next-themes
 - **Notifications**: Sonner
+- **Storage**: Supabase Storage (for file uploads)
 
 ## 📁 Project Structure
 
@@ -165,11 +177,23 @@ Debug operations. Accepts actions:
 
 1. Push your code to GitHub
 2. Import your repository in [Vercel](https://vercel.com)
-3. Vercel will auto-detect Next.js and configure build settings
+3. Add environment variables:
+   - `NEXT_PUBLIC_SUPABASE_URL`
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 4. Deploy!
 
+See `SUPABASE_SETUP.md` for detailed Supabase configuration.
+
 ### Environment Variables
-No environment variables required for basic functionality.
+
+Required for production:
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
+```
+
+Get these from your Supabase project: **Settings** → **API**
 
 ### Build Command
 ```bash

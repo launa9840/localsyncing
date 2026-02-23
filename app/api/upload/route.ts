@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { writeFile, mkdir } from 'fs/promises';
-import { join } from 'path';
-import { existsSync } from 'fs';
+import { uploadFile } from '@/lib/supabase';
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,21 +13,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
-
-    // Create uploads directory if it doesn't exist
-    const uploadsDir = join(process.cwd(), 'public', 'uploads');
-    if (!existsSync(uploadsDir)) {
-      await mkdir(uploadsDir, { recursive: true });
+    // Validate file size (100MB limit)
+    const maxSize = 100 * 1024 * 1024; // 100MB
+    if (file.size > maxSize) {
+      return NextResponse.json(
+        { success: false, error: 'File size exceeds 100MB limit' },
+        { status: 400 }
+      );
     }
 
     // Generate unique filename
     const uniqueId = Date.now() + '-' + Math.random().toString(36).substring(7);
     const filename = `${uniqueId}-${file.name}`;
-    const filepath = join(uploadsDir, filename);
 
-    await writeFile(filepath, buffer);
+    // Upload to Supabase Storage
+    const publicUrl = await uploadFile(file, filename);
 
     return NextResponse.json({
       success: true,
@@ -38,10 +36,11 @@ export async function POST(request: NextRequest) {
         name: file.name,
         size: file.size,
         uploadedAt: Date.now(),
-        url: `/uploads/${filename}`,
+        url: publicUrl,
       },
     });
   } catch (error) {
+    console.error('Upload error:', error);
     return NextResponse.json(
       { 
         success: false, 

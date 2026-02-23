@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { RealtimeService } from '@/lib/realtime-service';
-import { unlink } from 'fs/promises';
-import { join } from 'path';
-import { readdir } from 'fs/promises';
+import { deleteFile, getFilePathFromUrl } from '@/lib/supabase';
 
 function getClientIp(request: NextRequest): string {
   const forwarded = request.headers.get('x-forwarded-for');
@@ -42,21 +40,19 @@ export async function POST(request: NextRequest) {
         // Delete all files for this IP
         const data = await RealtimeService.getSyncData(ipAddress);
         
-        // Delete physical files
-        const uploadsDir = join(process.cwd(), 'public', 'uploads');
+        // Delete files from Supabase Storage
         try {
           for (const file of data.files) {
-            const filename = file.url.split('/').pop();
-            if (filename) {
-              try {
-                await unlink(join(uploadsDir, filename));
-              } catch (err) {
-                // File might not exist, continue
-              }
+            try {
+              const filePath = getFilePathFromUrl(file.url);
+              await deleteFile(filePath);
+            } catch (err) {
+              console.error('Error deleting file:', err);
+              // Continue even if file doesn't exist
             }
           }
         } catch (err) {
-          // Directory might not exist
+          console.error('Error in deleteFiles:', err);
         }
 
         // Clear files from data
@@ -80,21 +76,19 @@ export async function POST(request: NextRequest) {
         // Delete everything for this IP
         const allData = await RealtimeService.getSyncData(ipAddress);
         
-        // Delete physical files
-        const uploadsDirectory = join(process.cwd(), 'public', 'uploads');
+        // Delete files from Supabase Storage
         try {
           for (const file of allData.files) {
-            const filename = file.url.split('/').pop();
-            if (filename) {
-              try {
-                await unlink(join(uploadsDirectory, filename));
-              } catch (err) {
-                // Continue even if file doesn't exist
-              }
+            try {
+              const filePath = getFilePathFromUrl(file.url);
+              await deleteFile(filePath);
+            } catch (err) {
+              console.error('Error deleting file:', err);
+              // Continue even if file doesn't exist
             }
           }
         } catch (err) {
-          // Continue even if directory doesn't exist
+          console.error('Error in resetEverything:', err);
         }
 
         // Remove password
@@ -115,16 +109,9 @@ export async function POST(request: NextRequest) {
       case 'getStats':
         // Get statistics for this IP
         const stats = await RealtimeService.getSyncData(ipAddress);
-        const uploadsDir2 = join(process.cwd(), 'public', 'uploads');
-        let totalSize = 0;
         
-        try {
-          const files = await readdir(uploadsDir2);
-          // Calculate total size (simplified)
-          totalSize = stats.files.reduce((acc, file) => acc + file.size, 0);
-        } catch (err) {
-          // Directory might not exist
-        }
+        // Calculate total size from file metadata
+        const totalSize = stats.files.reduce((acc, file) => acc + file.size, 0);
 
         return NextResponse.json({
           success: true,
