@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Card } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
@@ -20,8 +20,11 @@ export default function Dashboard() {
   const [isLocked, setIsLocked] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [unlockDialogOpen, setUnlockDialogOpen] = useState(false);
-  const [isTyping, setIsTyping] = useState(false);
-  const [lastTypingTime, setLastTypingTime] = useState(0);
+  
+  // Use refs to track typing state without causing re-renders
+  const isTypingRef = useRef(false);
+  const lastTypingTimeRef = useRef(0);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Hash password client-side
   const hashPassword = async (password: string): Promise<string> => {
@@ -47,9 +50,9 @@ export default function Dashboard() {
           return;
         }
         
-        // Only update text if user hasn't typed in the last 2 seconds
-        const timeSinceLastTyping = Date.now() - lastTypingTime;
-        if (!isTyping && timeSinceLastTyping > 2000) {
+        // Only update text if user hasn't typed recently
+        const timeSinceLastTyping = Date.now() - lastTypingTimeRef.current;
+        if (!isTypingRef.current && timeSinceLastTyping > 3000) {
           setText(result.data.text);
         }
         
@@ -60,7 +63,7 @@ export default function Dashboard() {
     } finally {
       setIsLoading(false);
     }
-  }, [isAuthenticated, isTyping, lastTypingTime]);
+  }, [isAuthenticated]);
 
   useEffect(() => {
     fetchData();
@@ -150,7 +153,7 @@ export default function Dashboard() {
           body: JSON.stringify({ action: 'updateText', text }),
         });
         // Mark typing as finished after successful sync
-        setIsTyping(false);
+        isTypingRef.current = false;
       } catch (error) {
         toast.error('Failed to sync text');
       }
@@ -161,8 +164,18 @@ export default function Dashboard() {
 
   const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setText(e.target.value);
-    setIsTyping(true);
-    setLastTypingTime(Date.now());
+    isTypingRef.current = true;
+    lastTypingTimeRef.current = Date.now();
+    
+    // Clear existing timeout
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+    
+    // Set typing to false after 3 seconds of no typing
+    typingTimeoutRef.current = setTimeout(() => {
+      isTypingRef.current = false;
+    }, 3000);
   };
 
   const handleCopy = async () => {
