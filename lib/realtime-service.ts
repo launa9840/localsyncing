@@ -1,5 +1,5 @@
 import { SyncData, FileItem } from '@/types';
-import { filterExpired, isExpired } from './expiration-utils';
+import { isExpired } from './expiration-utils';
 import { supabase } from './supabase';
 
 export class RealtimeService {
@@ -54,21 +54,9 @@ export class RealtimeService {
     // Map database format to SyncData format
     const syncData = this.mapDbToSyncData(data);
 
-    // Filter out expired files
-    const filteredData: SyncData = {
-      ...syncData,
-      files: filterExpired(syncData.files),
-    };
-
-    // Update database if files were filtered
-    if (filteredData.files.length !== syncData.files.length) {
-      await supabase
-        .from('sync_data')
-        .update({ files: filteredData.files })
-        .eq('ip_address', ipAddress);
-    }
-
-    return filteredData;
+    // Return data without filtering - files will stay for 3 days
+    // Cleanup only happens via the /api/cleanup endpoint (runs every 6 hours)
+    return syncData;
   }
 
   // Helper to map database row to SyncData
