@@ -1,12 +1,26 @@
 import { SyncData, FileItem } from '@/types';
 import { filterExpired, isExpired } from './expiration-utils';
-
-// Mock in-memory storage (in production, use Redis or a database)
-const storage = new Map<string, SyncData>();
+import { supabase } from './supabase';
 
 export class RealtimeService {
   static async getSyncData(ipAddress: string): Promise<SyncData> {
-    const data = storage.get(ipAddress);
+    if (!supabase) {
+      throw new Error('Supabase is not configured');
+    }
+
+    // Fetch from database
+    const { data, error } = await supabase
+      .from('sync_data')
+      .select('*')
+      .eq('ip_address', ipAddress)
+      .single();
+
+    if (error && error.code !== 'PGRST116') {
+      // PGRST116 = no rows returned, which is fine for first time
+      console.error('Error fetching sync data:', error);
+    }
+
+    // If no data exists, create default entry
     if (!data) {
       const defaultData: SyncData = {
         text: '',
@@ -15,81 +29,178 @@ export class RealtimeService {
         createdAt: Date.now(),
         isLocked: false,
       };
-      storage.set(ipAddress, defaultData);
-      return defaultData;
+
+      const { data: newData, error: insertError } = await supabase
+        .from('sync_data')
+        .insert({
+          ip_address: ipAddress,
+          text_content: defaultData.text,
+          files: defaultData.files,
+          created_at: new Date(defaultData.createdAt).toISOString(),
+          last_updated: new Date(defaultData.lastUpdated).toISOString(),
+          is_locked: defaultData.isLocked,
+        })
+        .select()
+        .single();
+
+      if (insertError) {
+        console.error('Error creating sync data:', insertError);
+        return defaultData;
+      }
+
+      return this.mapDbToSyncData(newData);
     }
-    
+
+    // Map database format to SyncData format
+    const syncData = this.mapDbToSyncData(data);
+
     // Filter out expired files
     const filteredData: SyncData = {
-      ...data,
-      files: filterExpired(data.files),
+      ...syncData,
+      files: filterExpired(syncData.files),
     };
-    
-    // Update storage if files were filtered
-    if (filteredData.files.length !== data.files.length) {
-      storage.set(ipAddress, filteredData);
+
+    // Update database if files were filtered
+    if (filteredData.files.length !== syncData.files.length) {
+      await supabase
+        .from('sync_data')
+        .update({ files: filteredData.files })
+        .eq('ip_address', ipAddress);
     }
-    
+
     return filteredData;
   }
 
-  static async updateText(ipAddress: string, text: string): Promise<SyncData> {
-    const data = await this.getSyncData(ipAddress);
-    const updated: SyncData = {
-      ...data,
-      text,
-      lastUpdated: Date.now(),
-      // Set createdAt if this is the first text update
-      createdAt: data.createdAt || Date.now(),
+  // Helper to map database row to SyncData
+  private static mapDbToSyncData(dbRow: any): SyncData {
+    return {
+      text: dbRow.text_content || '',
+      files: dbRow.files || [],
+      lastUpdated: new Date(dbRow.last_updated).getTime(),
+      createdAt: new Date(dbRow.created_at).getTime(),
+      passwordHash: dbRow.password_hash,
+      isLocked: dbRow.is_locked || false,
     };
-    storage.set(ipAddress, updated);
-    return updated;
+  }
+
+  static async updateText(ipAddress: string, text: string): Promise<SyncData> {
+    if (!supabase) {
+      throw new Error('Supabase is not configured');
+    }
+
+    const data = await this.getSyncData(ipAddress);
+    
+    const { data: updated, error } = await supabase
+      .from('sync_data')
+      .update({
+        text_content: text,
+      })
+      .eq('ip_address', ipAddress)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error updating text:', error);
+      throw error;
+    }
+
+    return this.mapDbToSyncData(updated);
   }
 
   static async addFile(ipAddress: string, file: FileItem): Promise<SyncData> {
+    if (!supabase) {
+      throw new Error('Supabase is not configured');
+    }
+
     const data = await this.getSyncData(ipAddress);
-    const updated: SyncData = {
-      ...data,
-      files: [...data.files, file],
-      lastUpdated: Date.now(),
-    };
-    storage.set(ipAddress, updated);
-    return updated;
+    const updatedFiles = [...data.files, file];
+
+    const { data: updated, error } = await supabase
+      .from('sync_data')
+      .update({
+        files: updatedFiles,
+      })
+      .eq('ip_address', ipAddress)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error adding file:', error);
+      throw error;
+    }
+
+    return this.mapDbToSyncData(updated);
   }
 
   static async deleteFile(ipAddress: string, fileId: string): Promise<SyncData> {
+    if (!supabase) {
+      throw new Error('Supabase is not configured');
+    }
+
     const data = await this.getSyncData(ipAddress);
-    const updated: SyncData = {
-      ...data,
-      files: data.files.filter(f => f.id !== fileId),
-      lastUpdated: Date.now(),
-    };
-    storage.set(ipAddress, updated);
-    return updated;
+    const updatedFiles = data.files.filter(f => f.id !== fileId);
+
+    const { data: updated, error } = await supabase
+      .from('sync_data')
+      .update({
+        files: updatedFiles,
+      })
+      .eq('ip_address', ipAddress)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error deleting file:', error);
+      throw error;
+    }
+
+    return this.mapDbToSyncData(updated);
   }
 
   static async setPassword(ipAddress: string, passwordHash: string): Promise<SyncData> {
-    const data = await this.getSyncData(ipAddress);
-    const updated: SyncData = {
-      ...data,
-      passwordHash,
-      isLocked: true,
-      lastUpdated: Date.now(),
-    };
-    storage.set(ipAddress, updated);
-    return updated;
+    if (!supabase) {
+      throw new Error('Supabase is not configured');
+    }
+
+    const { data: updated, error } = await supabase
+      .from('sync_data')
+      .update({
+        password_hash: passwordHash,
+        is_locked: true,
+      })
+      .eq('ip_address', ipAddress)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error setting password:', error);
+      throw error;
+    }
+
+    return this.mapDbToSyncData(updated);
   }
 
   static async removePassword(ipAddress: string): Promise<SyncData> {
-    const data = await this.getSyncData(ipAddress);
-    const updated: SyncData = {
-      ...data,
-      passwordHash: undefined,
-      isLocked: false,
-      lastUpdated: Date.now(),
-    };
-    storage.set(ipAddress, updated);
-    return updated;
+    if (!supabase) {
+      throw new Error('Supabase is not configured');
+    }
+
+    const { data: updated, error } = await supabase
+      .from('sync_data')
+      .update({
+        password_hash: null,
+        is_locked: false,
+      })
+      .eq('ip_address', ipAddress)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error removing password:', error);
+      throw error;
+    }
+
+    return this.mapDbToSyncData(updated);
   }
 
   static async verifyPassword(ipAddress: string, passwordHash: string): Promise<boolean> {
@@ -102,36 +213,58 @@ export class RealtimeService {
    * Returns array of deleted file URLs
    */
   static async cleanupExpiredFiles(ipAddress: string): Promise<string[]> {
-    const data = storage.get(ipAddress);
-    if (!data) return [];
-    
-    const expiredFiles = data.files.filter(file => isExpired(file.uploadedAt));
-    const expiredUrls = expiredFiles.map(f => f.url);
-    
-    if (expiredFiles.length > 0) {
-      const updated: SyncData = {
-        ...data,
-        files: data.files.filter(file => !isExpired(file.uploadedAt)),
-        lastUpdated: Date.now(),
-      };
-      storage.set(ipAddress, updated);
+    if (!supabase) {
+      throw new Error('Supabase is not configured');
     }
-    
+
+    const { data, error } = await supabase
+      .from('sync_data')
+      .select('*')
+      .eq('ip_address', ipAddress)
+      .single();
+
+    if (error || !data) return [];
+
+    const syncData = this.mapDbToSyncData(data);
+    const expiredFiles = syncData.files.filter(file => isExpired(file.uploadedAt));
+    const expiredUrls = expiredFiles.map(f => f.url);
+
+    if (expiredFiles.length > 0) {
+      const remainingFiles = syncData.files.filter(file => !isExpired(file.uploadedAt));
+      
+      await supabase
+        .from('sync_data')
+        .update({ files: remainingFiles })
+        .eq('ip_address', ipAddress);
+    }
+
     return expiredUrls;
   }
-  
+
   /**
    * Clean up expired files for all IPs
    * Returns array of deleted file URLs
    */
   static async cleanupAllExpiredFiles(): Promise<string[]> {
+    if (!supabase) {
+      throw new Error('Supabase is not configured');
+    }
+
     const allDeletedUrls: string[] = [];
-    
-    for (const [ipAddress] of storage) {
-      const deletedUrls = await this.cleanupExpiredFiles(ipAddress);
+
+    // Get all sync data entries
+    const { data: allData, error } = await supabase
+      .from('sync_data')
+      .select('*');
+
+    if (error || !allData) return [];
+
+    // Process each entry
+    for (const dbRow of allData) {
+      const deletedUrls = await this.cleanupExpiredFiles(dbRow.ip_address);
       allDeletedUrls.push(...deletedUrls);
     }
-    
+
     return allDeletedUrls;
   }
 }
