@@ -1,4 +1,5 @@
 import { SyncData, FileItem } from '@/types';
+import { filterExpired, isExpired } from './expiration-utils';
 
 // Mock in-memory storage (in production, use Redis or a database)
 const storage = new Map<string, SyncData>();
@@ -11,12 +12,25 @@ export class RealtimeService {
         text: '',
         files: [],
         lastUpdated: Date.now(),
+        createdAt: Date.now(),
         isLocked: false,
       };
       storage.set(ipAddress, defaultData);
       return defaultData;
     }
-    return data;
+    
+    // Filter out expired files
+    const filteredData: SyncData = {
+      ...data,
+      files: filterExpired(data.files),
+    };
+    
+    // Update storage if files were filtered
+    if (filteredData.files.length !== data.files.length) {
+      storage.set(ipAddress, filteredData);
+    }
+    
+    return filteredData;
   }
 
   static async updateText(ipAddress: string, text: string): Promise<SyncData> {
@@ -25,6 +39,8 @@ export class RealtimeService {
       ...data,
       text,
       lastUpdated: Date.now(),
+      // Set createdAt if this is the first text update
+      createdAt: data.createdAt || Date.now(),
     };
     storage.set(ipAddress, updated);
     return updated;
@@ -79,5 +95,43 @@ export class RealtimeService {
   static async verifyPassword(ipAddress: string, passwordHash: string): Promise<boolean> {
     const data = await this.getSyncData(ipAddress);
     return data.passwordHash === passwordHash;
+  }
+  
+  /**
+   * Clean up expired files for a specific IP
+   * Returns array of deleted file URLs
+   */
+  static async cleanupExpiredFiles(ipAddress: string): Promise<string[]> {
+    const data = storage.get(ipAddress);
+    if (!data) return [];
+    
+    const expiredFiles = data.files.filter(file => isExpired(file.uploadedAt));
+    const expiredUrls = expiredFiles.map(f => f.url);
+    
+    if (expiredFiles.length > 0) {
+      const updated: SyncData = {
+        ...data,
+        files: data.files.filter(file => !isExpired(file.uploadedAt)),
+        lastUpdated: Date.now(),
+      };
+      storage.set(ipAddress, updated);
+    }
+    
+    return expiredUrls;
+  }
+  
+  /**
+   * Clean up expired files for all IPs
+   * Returns array of deleted file URLs
+   */
+  static async cleanupAllExpiredFiles(): Promise<string[]> {
+    const allDeletedUrls: string[] = [];
+    
+    for (const [ipAddress] of storage) {
+      const deletedUrls = await this.cleanupExpiredFiles(ipAddress);
+      allDeletedUrls.push(...deletedUrls);
+    }
+    
+    return allDeletedUrls;
   }
 }

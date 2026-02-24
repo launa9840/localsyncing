@@ -2,6 +2,7 @@ export interface SyncData {
   text: string;
   files: FileItem[];
   lastUpdated: number;
+  createdAt: number;
   passwordHash?: string;
   isLocked?: boolean;
 }

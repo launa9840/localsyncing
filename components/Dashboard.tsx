@@ -5,9 +5,10 @@ import { Card } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Copy, Settings, Download, Trash2, Lock, FileText, HardDrive, CheckCircle2, Upload as UploadIcon, RefreshCw } from 'lucide-react';
+import { Copy, Settings, Download, Trash2, Lock, FileText, HardDrive, CheckCircle2, Upload as UploadIcon, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 import { FileItem } from '@/types';
+import { formatTimeRemaining, getExpirationColor } from '@/lib/expiration-utils';
 import FileUploadZone from './FileUploadZone';
 import SettingsDialog from './SettingsDialog';
 import PasswordDialog from './PasswordDialog';
@@ -72,6 +73,16 @@ export default function Dashboard() {
     const interval = setInterval(fetchData, 2000);
     return () => clearInterval(interval);
   }, [fetchData]);
+
+  // Refresh countdown timers every minute
+  const [, setTimerTick] = useState(0);
+  useEffect(() => {
+    const timerInterval = setInterval(() => {
+      setTimerTick(prev => prev + 1);
+    }, 60000); // Update every minute
+    
+    return () => clearInterval(timerInterval);
+  }, []);
 
   // Handle unlock
   const handleUnlock = async (password: string) => {
@@ -425,9 +436,18 @@ export default function Dashboard() {
                       className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 transition-colors"
                     >
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-slate-800 dark:text-slate-100 truncate">
-                          {file.name}
-                        </p>
+                        <div className="flex items-center gap-2 mb-1">
+                          <p className="text-sm font-medium text-slate-800 dark:text-slate-100 truncate">
+                            {file.name}
+                          </p>
+                          <Badge 
+                            variant="secondary" 
+                            className={`text-xs flex items-center gap-1 ${getExpirationColor(file.uploadedAt)}`}
+                          >
+                            <Clock className="h-3 w-3" />
+                            {formatTimeRemaining(file.uploadedAt)}
+                          </Badge>
+                        </div>
                         <p className="text-xs text-slate-500 dark:text-slate-400">
                           {formatFileSize(file.size)}
                         </p>
