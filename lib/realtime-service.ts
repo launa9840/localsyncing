@@ -8,6 +8,8 @@ export class RealtimeService {
       throw new Error('Supabase is not configured');
     }
 
+    console.log('[RealtimeService] Fetching data for IP:', ipAddress);
+
     // Fetch from database
     const { data, error } = await supabase
       .from('sync_data')
@@ -17,11 +19,12 @@ export class RealtimeService {
 
     if (error && error.code !== 'PGRST116') {
       // PGRST116 = no rows returned, which is fine for first time
-      console.error('Error fetching sync data:', error);
+      console.error('[RealtimeService] Error fetching sync data:', error);
     }
 
     // If no data exists, create default entry
     if (!data) {
+      console.log('[RealtimeService] No data found, creating default entry');
       const defaultData: SyncData = {
         text: '',
         files: [],
@@ -44,12 +47,18 @@ export class RealtimeService {
         .single();
 
       if (insertError) {
-        console.error('Error creating sync data:', insertError);
+        console.error('[RealtimeService] Error creating sync data:', insertError);
         return defaultData;
       }
 
+      console.log('[RealtimeService] Created new entry');
       return this.mapDbToSyncData(newData);
     }
+
+    console.log('[RealtimeService] Found existing data:', {
+      textLength: data.text_content?.length || 0,
+      filesCount: data.files?.length || 0,
+    });
 
     // Map database format to SyncData format
     const syncData = this.mapDbToSyncData(data);
@@ -100,6 +109,7 @@ export class RealtimeService {
       throw new Error('Supabase is not configured');
     }
 
+    console.log('[RealtimeService] Adding file:', file.name, 'for IP:', ipAddress);
     const data = await this.getSyncData(ipAddress);
     const updatedFiles = [...data.files, file];
 
@@ -113,10 +123,11 @@ export class RealtimeService {
       .single();
 
     if (error) {
-      console.error('Error adding file:', error);
+      console.error('[RealtimeService] Error adding file:', error);
       throw error;
     }
 
+    console.log('[RealtimeService] File added successfully, total files:', updatedFiles.length);
     return this.mapDbToSyncData(updated);
   }
 
