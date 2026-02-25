@@ -73,6 +73,8 @@ export default function CloudinaryUpload({ onUploadSuccess }: CloudinaryUploadPr
         maxFileSize: 100000000, // 100MB
         multiple: false,
         sources: ['local', 'url', 'camera'],
+        tags: ['localsync', 'expires_3days'], // Tag for auto-deletion
+        folder: 'localsync', // Organize files in folder
         styles: {
           palette: {
             window: '#ffffff',
