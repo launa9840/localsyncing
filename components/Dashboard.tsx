@@ -199,7 +199,7 @@ export default function Dashboard() {
     }
   };
 
-  const handleFileUpload = async (fileData: { url: string; name: string; size: number }) => {
+  const handleFileUpload = async (fileData: { url: string; name: string; size: number; publicId: string; resourceType: string }) => {
     if (isLocked && !isAuthenticated) {
       toast.error('Please unlock first');
       return;
@@ -209,13 +209,15 @@ export default function Dashboard() {
       // Sanitize filename before saving
       const sanitizedName = sanitizeFilename(fileData.name);
       
-      // Create file item with Cloudinary URL
+      // Create file item with Cloudinary URL and metadata
       const fileItem = {
         id: Date.now().toString() + '-' + Math.random().toString(36).substring(7),
         name: sanitizedName,
         size: fileData.size,
         uploadedAt: Date.now(),
         url: fileData.url,
+        publicId: fileData.publicId, // Store for deletion
+        resourceType: fileData.resourceType, // Store for deletion
       };
 
       console.log('[Dashboard] Adding file to database:', fileItem);
@@ -316,16 +318,59 @@ export default function Dashboard() {
     }
 
     try {
-      await fetch('/api/sync', {
+      toast.loading('Deleting file...', { id: 'delete' });
+      
+      // Find the file to get publicId and resourceType
+      const fileToDelete = files.find(f => f.id === fileId);
+      
+      if (!fileToDelete) {
+        toast.error('File not found', { id: 'delete' });
+        return;
+      }
+
+      // Step 1: Delete from Cloudinary (if publicId exists)
+      if (fileToDelete.publicId) {
+        console.log('[Dashboard] Deleting from Cloudinary:', {
+          publicId: fileToDelete.publicId,
+          resourceType: fileToDelete.resourceType,
+        });
+
+        const cloudinaryResponse = await fetch('/api/delete-file', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            publicId: fileToDelete.publicId,
+            resourceType: fileToDelete.resourceType || 'raw',
+          }),
+        });
+
+        const cloudinaryResult = await cloudinaryResponse.json();
+
+        if (!cloudinaryResult.success) {
+          console.warn('[Dashboard] Cloudinary deletion failed:', cloudinaryResult.error);
+          // Continue with database deletion even if Cloudinary fails
+        } else {
+          console.log('[Dashboard] Cloudinary deletion successful');
+        }
+      }
+
+      // Step 2: Delete from database
+      const dbResponse = await fetch('/api/sync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'deleteFile', fileId }),
       });
+
+      if (!dbResponse.ok) {
+        throw new Error('Database deletion failed');
+      }
       
+      // Step 3: Update UI
       setFiles(prev => prev.filter(f => f.id !== fileId));
-      toast.success('File deleted');
+      toast.success('File deleted successfully', { id: 'delete' });
     } catch (error) {
-      toast.error('Failed to delete file');
+      console.error('[Dashboard] Delete error:', error);
+      toast.error('Failed to delete file', { id: 'delete' });
     }
   };
 

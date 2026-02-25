@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { useEffect } from 'react';
 
 interface CloudinaryUploadProps {
-  onUploadSuccess: (url: string, fileName: string, fileSize: number) => void;
+  onUploadSuccess: (url: string, fileName: string, fileSize: number, publicId: string, resourceType: string) => void;
 }
 
 export default function CloudinaryUpload({ onUploadSuccess }: CloudinaryUploadProps) {
@@ -102,16 +102,18 @@ export default function CloudinaryUpload({ onUploadSuccess }: CloudinaryUploadPr
             : `file-${Date.now()}.${result.info.format}`;
           const fileSize = result.info.bytes || 0;
           const publicId = result.info.public_id || '';
+          const resourceType = result.info.resource_type || 'raw'; // image, video, or raw
           
           console.log('[Cloudinary] Upload success:', { 
             secureUrl, 
             originalFilename, 
             fileSize,
             publicId,
+            resourceType,
             format: result.info.format
           });
           
-          onUploadSuccess(secureUrl, originalFilename, fileSize);
+          onUploadSuccess(secureUrl, originalFilename, fileSize, publicId, resourceType);
         }
       }}
       onError={(error: any) => {

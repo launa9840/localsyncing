@@ -4,16 +4,18 @@ import CloudinaryUpload from './CloudinaryUpload';
 import { Upload } from 'lucide-react';
 
 interface FileUploadZoneProps {
-  onFileUpload: (fileData: { url: string; name: string; size: number }) => void;
+  onFileUpload: (fileData: { url: string; name: string; size: number; publicId: string; resourceType: string }) => void;
 }
 
 export default function FileUploadZone({ onFileUpload }: FileUploadZoneProps) {
-  const handleCloudinaryUpload = (url: string, fileName: string, fileSize: number) => {
-    console.log('[FileUploadZone] Cloudinary upload complete:', { url, fileName, fileSize });
+  const handleCloudinaryUpload = (url: string, fileName: string, fileSize: number, publicId: string, resourceType: string) => {
+    console.log('[FileUploadZone] Cloudinary upload complete:', { url, fileName, fileSize, publicId, resourceType });
     onFileUpload({
       url,
       name: fileName,
       size: fileSize,
+      publicId,
+      resourceType,
     });
   };
 

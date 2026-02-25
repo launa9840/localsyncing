@@ -13,6 +13,8 @@ export interface FileItem {
   size: number;
   uploadedAt: number;
   url: string;
+  publicId?: string; // Cloudinary public_id for deletion
+  resourceType?: string; // Cloudinary resource type (image, video, raw)
 }
 
 export interface ApiResponse<T> {
