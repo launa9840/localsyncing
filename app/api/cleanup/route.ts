@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { RealtimeService } from '@/lib/realtime-service';
-import { deleteFile, getFilePathFromUrl } from '@/lib/supabase';
 
 /**
- * Cleanup API - Removes expired files from storage
+ * Cleanup API - Removes expired files from database
  * Can be called manually or via cron job
+ * Note: Cloudinary files are not deleted - they expire automatically
  */
 export async function POST(request: NextRequest) {
   try {
@@ -20,33 +20,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get all expired file URLs
+    // Get all expired file URLs and remove from database
     const expiredUrls = await RealtimeService.cleanupAllExpiredFiles();
 
-    // Delete files from Supabase Storage
-    let supabaseDeleteCount = 0;
-    for (const url of expiredUrls) {
-      try {
-        const filePath = getFilePathFromUrl(url);
-        if (filePath) {
-          await deleteFile(filePath);
-          supabaseDeleteCount++;
-        }
-      } catch (error) {
-        console.error('Failed to delete file from Supabase:', error);
-      }
-    }
+    console.log('[Cleanup] Removed expired files from database:', expiredUrls.length);
 
     return NextResponse.json({
       success: true,
       data: {
         filesDeleted: expiredUrls.length,
-        supabaseDeleted: supabaseDeleteCount,
-        message: `Cleaned up ${expiredUrls.length} expired files (${supabaseDeleteCount} from storage)`,
+        message: `Cleaned up ${expiredUrls.length} expired files from database`,
       },
     });
   } catch (error) {
-    console.error('Cleanup error:', error);
+    console.error('[Cleanup] Error:', error);
     return NextResponse.json(
       {
         success: false,
@@ -67,6 +54,7 @@ export async function GET() {
       message: 'Cleanup endpoint is active',
       info: 'POST to this endpoint to trigger cleanup',
       expirationPolicy: '3 days (72 hours)',
+      storage: 'Cloudinary (files expire automatically)',
     },
   });
 }

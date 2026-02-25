@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { RealtimeService } from '@/lib/realtime-service';
-import { deleteFile, getFilePathFromUrl } from '@/lib/supabase';
 
 function getClientIp(request: NextRequest): string {
   const forwarded = request.headers.get('x-forwarded-for');
@@ -40,20 +39,8 @@ export async function POST(request: NextRequest) {
         // Delete all files for this IP
         const data = await RealtimeService.getSyncData(ipAddress);
         
-        // Delete files from Supabase Storage
-        try {
-          for (const file of data.files) {
-            try {
-              const filePath = getFilePathFromUrl(file.url);
-              await deleteFile(filePath);
-            } catch (err) {
-              console.error('Error deleting file:', err);
-              // Continue even if file doesn't exist
-            }
-          }
-        } catch (err) {
-          console.error('Error in deleteFiles:', err);
-        }
+        // Note: Cloudinary files are not deleted - they expire automatically
+        console.log('[Debug] Removing file references from database:', data.files.length);
 
         // Clear files from data
         data.files = [];
@@ -61,7 +48,7 @@ export async function POST(request: NextRequest) {
         
         return NextResponse.json({
           success: true,
-          message: 'All files deleted successfully',
+          message: 'All file references deleted successfully',
         });
 
       case 'unlinkIPs':
@@ -76,20 +63,8 @@ export async function POST(request: NextRequest) {
         // Delete everything for this IP
         const allData = await RealtimeService.getSyncData(ipAddress);
         
-        // Delete files from Supabase Storage
-        try {
-          for (const file of allData.files) {
-            try {
-              const filePath = getFilePathFromUrl(file.url);
-              await deleteFile(filePath);
-            } catch (err) {
-              console.error('Error deleting file:', err);
-              // Continue even if file doesn't exist
-            }
-          }
-        } catch (err) {
-          console.error('Error in resetEverything:', err);
-        }
+        // Note: Cloudinary files are not deleted - they expire automatically
+        console.log('[Debug] Resetting everything for IP:', ipAddress);
 
         // Remove password
         await RealtimeService.removePassword(ipAddress);

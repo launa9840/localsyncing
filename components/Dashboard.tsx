@@ -198,35 +198,36 @@ export default function Dashboard() {
     }
   };
 
-  const handleFileUpload = async (file: File) => {
+  const handleFileUpload = async (fileData: { url: string; name: string; size: number }) => {
     if (isLocked && !isAuthenticated) {
       toast.error('Please unlock first');
       return;
     }
 
-    const formData = new FormData();
-    formData.append('file', file);
-
     try {
-      const response = await fetch('/api/upload', {
+      // Create file item with Cloudinary URL
+      const fileItem = {
+        id: Date.now().toString() + '-' + Math.random().toString(36).substring(7),
+        name: fileData.name,
+        size: fileData.size,
+        uploadedAt: Date.now(),
+        url: fileData.url,
+      };
+
+      console.log('[Dashboard] Adding file to database:', fileItem);
+
+      // Save to database
+      await fetch('/api/sync', {
         method: 'POST',
-        body: formData,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'addFile', file: fileItem }),
       });
       
-      const result = await response.json();
-      
-      if (result.success && result.data) {
-        await fetch('/api/sync', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'addFile', file: result.data }),
-        });
-        
-        setFiles(prev => [...prev, result.data]);
-        toast.success('File uploaded successfully!');
-      }
+      setFiles(prev => [...prev, fileItem]);
+      toast.success('File uploaded successfully!');
     } catch (error) {
-      toast.error('Failed to upload file');
+      console.error('[Dashboard] File upload error:', error);
+      toast.error('Failed to save file');
     }
   };
 
