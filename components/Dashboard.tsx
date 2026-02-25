@@ -9,6 +9,7 @@ import { Copy, Settings, Download, Trash2, Lock, FileText, HardDrive, CheckCircl
 import { toast } from 'sonner';
 import { FileItem } from '@/types';
 import { formatTimeRemaining, getExpirationColor } from '@/lib/expiration-utils';
+import { sanitizeFilename } from '@/lib/filename-utils';
 import FileUploadZone from './FileUploadZone';
 import SettingsDialog from './SettingsDialog';
 import PasswordDialog from './PasswordDialog';
@@ -205,10 +206,13 @@ export default function Dashboard() {
     }
 
     try {
+      // Sanitize filename before saving
+      const sanitizedName = sanitizeFilename(fileData.name);
+      
       // Create file item with Cloudinary URL
       const fileItem = {
         id: Date.now().toString() + '-' + Math.random().toString(36).substring(7),
-        name: fileData.name,
+        name: sanitizedName,
         size: fileData.size,
         uploadedAt: Date.now(),
         url: fileData.url,
@@ -228,6 +232,80 @@ export default function Dashboard() {
     } catch (error) {
       console.error('[Dashboard] File upload error:', error);
       toast.error('Failed to save file');
+    }
+  };
+
+  const handleDownloadFile = async (file: FileItem) => {
+    try {
+      toast.loading('Preparing download...', { id: 'download' });
+      
+      // Method 1: Try direct download with Cloudinary fl_attachment transformation
+      let downloadUrl = file.url;
+      
+      // Check if it's a Cloudinary URL and add fl_attachment flag
+      if (file.url.includes('cloudinary.com')) {
+        // Insert fl_attachment before /upload/ or after /upload/
+        downloadUrl = file.url.replace('/upload/', '/upload/fl_attachment/');
+      }
+      
+      try {
+        // Try direct download first
+        const response = await fetch(downloadUrl, {
+          mode: 'cors',
+          credentials: 'omit',
+        });
+        
+        if (!response.ok) {
+          throw new Error('Direct download failed');
+        }
+        
+        const blob = await response.blob();
+        
+        // Create object URL from blob
+        const blobUrl = window.URL.createObjectURL(blob);
+        
+        // Create temporary link element
+        const link = document.createElement('a');
+        link.style.display = 'none';
+        link.href = blobUrl;
+        link.download = file.name; // Use the original filename
+        
+        // Append to body, click, and remove
+        document.body.appendChild(link);
+        link.click();
+        
+        // Cleanup after a short delay
+        setTimeout(() => {
+          document.body.removeChild(link);
+          window.URL.revokeObjectURL(blobUrl);
+        }, 100);
+        
+        toast.success(`Downloaded: ${file.name}`, { id: 'download' });
+      } catch (directError) {
+        // Method 2: Fallback to API proxy route
+        console.log('[Dashboard] Direct download failed, using API proxy');
+        
+        const proxyUrl = `/api/download?url=${encodeURIComponent(file.url)}&filename=${encodeURIComponent(file.name)}`;
+        
+        // Create temporary link element
+        const link = document.createElement('a');
+        link.style.display = 'none';
+        link.href = proxyUrl;
+        link.download = file.name;
+        
+        // Append to body, click, and remove
+        document.body.appendChild(link);
+        link.click();
+        
+        setTimeout(() => {
+          document.body.removeChild(link);
+        }, 100);
+        
+        toast.success(`Downloaded: ${file.name}`, { id: 'download' });
+      }
+    } catch (error) {
+      console.error('[Dashboard] Download error:', error);
+      toast.error('Failed to download file. Please try again.', { id: 'download' });
     }
   };
 
@@ -457,18 +535,18 @@ export default function Dashboard() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          asChild
+                          onClick={() => handleDownloadFile(file)}
                           className="h-8 w-8 p-0"
+                          title="Download file"
                         >
-                          <a href={file.url} download>
-                            <Download className="h-4 w-4" />
-                          </a>
+                          <Download className="h-4 w-4" />
                         </Button>
                         <Button
                           variant="ghost"
                           size="sm"
                           onClick={() => handleDeleteFile(file.id)}
                           className="h-8 w-8 p-0 hover:text-red-600 dark:hover:text-red-400"
+                          title="Delete file"
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>

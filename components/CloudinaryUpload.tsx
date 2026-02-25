@@ -96,11 +96,22 @@ export default function CloudinaryUpload({ onUploadSuccess }: CloudinaryUploadPr
       onSuccess={(result: any) => {
         if (result.event === 'success') {
           const secureUrl = result.info.secure_url;
-          const fileName = result.info.original_filename || 'uploaded-file';
+          // Get original filename with extension
+          const originalFilename = result.info.original_filename 
+            ? `${result.info.original_filename}.${result.info.format}`
+            : `file-${Date.now()}.${result.info.format}`;
           const fileSize = result.info.bytes || 0;
+          const publicId = result.info.public_id || '';
           
-          console.log('[Cloudinary] Upload success:', { secureUrl, fileName, fileSize });
-          onUploadSuccess(secureUrl, fileName, fileSize);
+          console.log('[Cloudinary] Upload success:', { 
+            secureUrl, 
+            originalFilename, 
+            fileSize,
+            publicId,
+            format: result.info.format
+          });
+          
+          onUploadSuccess(secureUrl, originalFilename, fileSize);
         }
       }}
       onError={(error: any) => {
