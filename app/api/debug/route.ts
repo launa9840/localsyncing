@@ -1,23 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { RealtimeService } from '@/lib/realtime-service';
 
+function getClientIp(request: NextRequest): string {
+  const forwarded = request.headers.get('x-forwarded-for');
+  const realIp = request.headers.get('x-real-ip');
+  
+  if (forwarded) {
+    return forwarded.split(',')[0].trim();
+  }
+  
+  if (realIp) {
+    return realIp;
+  }
+  
+  return '127.0.0.1';
+}
+
 export async function POST(request: NextRequest) {
   try {
+    const ipAddress = getClientIp(request);
     const body = await request.json();
-    const { action, userId } = body;
-    
-    if (!userId) {
-      return NextResponse.json(
-        { success: false, error: 'User ID is required' },
-        { status: 400 }
-      );
-    }
+    const { action } = body;
 
     switch (action) {
       case 'resetPassword':
         // Remove password and clear all data
-        await RealtimeService.removePassword(userId);
-        const clearedData = await RealtimeService.getSyncData(userId);
+        await RealtimeService.removePassword(ipAddress);
+        const clearedData = await RealtimeService.getSyncData(ipAddress);
         clearedData.text = '';
         clearedData.files = [];
         
@@ -27,15 +36,15 @@ export async function POST(request: NextRequest) {
         });
 
       case 'deleteFiles':
-        // Delete all files for this user
-        const data = await RealtimeService.getSyncData(userId);
+        // Delete all files for this IP
+        const data = await RealtimeService.getSyncData(ipAddress);
         
         // Note: Cloudinary files are not deleted - they expire automatically
         console.log('[Debug] Removing file references from database:', data.files.length);
 
         // Clear files from data
         data.files = [];
-        await RealtimeService.updateText(userId, data.text);
+        await RealtimeService.updateText(ipAddress, data.text);
         
         return NextResponse.json({
           success: true,
@@ -51,17 +60,17 @@ export async function POST(request: NextRequest) {
         });
 
       case 'resetEverything':
-        // Delete everything for this user
-        const allData = await RealtimeService.getSyncData(userId);
+        // Delete everything for this IP
+        const allData = await RealtimeService.getSyncData(ipAddress);
         
         // Note: Cloudinary files are not deleted - they expire automatically
-        console.log('[Debug] Resetting everything for user:', userId);
+        console.log('[Debug] Resetting everything for IP:', ipAddress);
 
         // Remove password
-        await RealtimeService.removePassword(userId);
+        await RealtimeService.removePassword(ipAddress);
         
         // Clear all data
-        const resetData = await RealtimeService.getSyncData(userId);
+        const resetData = await RealtimeService.getSyncData(ipAddress);
         resetData.text = '';
         resetData.files = [];
         resetData.passwordHash = undefined;
@@ -73,8 +82,8 @@ export async function POST(request: NextRequest) {
         });
 
       case 'getStats':
-        // Get statistics for this user
-        const stats = await RealtimeService.getSyncData(userId);
+        // Get statistics for this IP
+        const stats = await RealtimeService.getSyncData(ipAddress);
         
         // Calculate total size from file metadata
         const totalSize = stats.files.reduce((acc, file) => acc + file.size, 0);
@@ -109,20 +118,12 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
-    
-    if (!userId) {
-      return NextResponse.json(
-        { success: false, error: 'User ID is required' },
-        { status: 400 }
-      );
-    }
+    const ipAddress = getClientIp(request);
     
     return NextResponse.json({
       success: true,
       data: {
-        userId,
+        ipAddress,
       },
     });
   } catch (error) {
