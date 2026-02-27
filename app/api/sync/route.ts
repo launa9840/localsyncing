@@ -65,8 +65,9 @@ export async function POST(request: NextRequest) {
       console.log('[API] Deleting file:', body.fileId);
       data = await RealtimeService.deleteFile(ipAddress, body.fileId);
     } else if (action === 'setPassword') {
-      console.log('[API] Setting password');
-      data = await RealtimeService.setPassword(ipAddress, body.passwordHash);
+      console.log('[API] Setting password with 12-hour expiration');
+      const { passwordHash, passwordCreatedAt } = body;
+      data = await RealtimeService.setPassword(ipAddress, passwordHash, passwordCreatedAt);
     } else if (action === 'removePassword') {
       console.log('[API] Removing password');
       data = await RealtimeService.removePassword(ipAddress);

@@ -69,6 +69,30 @@ export class RealtimeService {
         filesCount: data.files?.length || 0,
       });
 
+      // Check if password has expired (12 hours)
+      if (data.password_hash && data.password_created_at) {
+        const passwordAge = Date.now() - new Date(data.password_created_at).getTime();
+        const TWELVE_HOURS = 12 * 60 * 60 * 1000;
+        
+        if (passwordAge > TWELVE_HOURS) {
+          console.log('[RealtimeService] Password expired, removing...');
+          // Password expired, remove it
+          await supabase
+            .from('sync_data')
+            .update({
+              password_hash: null,
+              is_locked: false,
+              password_created_at: null,
+            })
+            .eq('ip_address', ipAddress);
+          
+          // Update local data
+          data.password_hash = null;
+          data.is_locked = false;
+          data.password_created_at = null;
+        }
+      }
+
       // Map database format to SyncData format
       const syncData = this.mapDbToSyncData(data);
 
@@ -202,7 +226,7 @@ export class RealtimeService {
     }
   }
 
-  static async setPassword(ipAddress: string, passwordHash: string): Promise<SyncData> {
+  static async setPassword(ipAddress: string, passwordHash: string, passwordCreatedAt?: string): Promise<SyncData> {
     if (!supabase) {
       console.warn('[RealtimeService] Supabase not configured - cannot set password');
       const data = await this.getSyncData(ipAddress);
@@ -217,6 +241,7 @@ export class RealtimeService {
         .update({
           password_hash: passwordHash,
           is_locked: true,
+          password_created_at: passwordCreatedAt || new Date().toISOString(),
         })
         .eq('ip_address', ipAddress)
         .select()
