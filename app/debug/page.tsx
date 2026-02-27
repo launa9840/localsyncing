@@ -21,6 +21,7 @@ import {
   Unlock,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { getUserId } from '@/lib/user-id';
 
 export default function DebugPage() {
   const [stats, setStats] = useState({
@@ -30,35 +31,40 @@ export default function DebugPage() {
     isLocked: false,
     lastUpdated: Date.now(),
   });
-  const [ipAddress, setIpAddress] = useState('Loading...');
+  const [userId, setUserId] = useState('Loading...');
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [lastSync, setLastSync] = useState<Date>(new Date());
 
   useEffect(() => {
-    fetchDebugInfo();
+    const id = getUserId();
+    setUserId(id);
+    fetchDebugInfo(id);
     const interval = setInterval(() => {
       setLastSync(new Date());
     }, 1000);
     return () => clearInterval(interval);
   }, []);
 
-  const fetchDebugInfo = async () => {
+  const fetchDebugInfo = async (id?: string) => {
+    const currentUserId = id || userId;
+    if (currentUserId === 'Loading...') return;
+    
     setRefreshing(true);
     try {
-      const [ipRes, statsRes] = await Promise.all([
-        fetch('/api/debug'),
+      const [userRes, statsRes] = await Promise.all([
+        fetch(`/api/debug?userId=${encodeURIComponent(currentUserId)}`),
         fetch('/api/debug', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'getStats' }),
+          body: JSON.stringify({ userId: currentUserId, action: 'getStats' }),
         }),
       ]);
 
-      const ipData = await ipRes.json();
+      const userData = await userRes.json();
       const statsData = await statsRes.json();
 
-      if (ipData.success) setIpAddress(ipData.data.ipAddress);
+      if (userData.success) setUserId(userData.data.userId);
       if (statsData.success) setStats(statsData.data);
       toast.success('Data refreshed successfully');
     } catch (error) {
@@ -76,7 +82,7 @@ export default function DebugPage() {
       const response = await fetch('/api/debug', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'resetEverything' }),
+        body: JSON.stringify({ userId, action: 'resetEverything' }),
       });
 
       if (response.ok) {
@@ -93,7 +99,7 @@ export default function DebugPage() {
   const handleExportData = () => {
     const data = {
       stats,
-      ipAddress,
+      userId,
       timestamp: new Date().toISOString(),
     };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -231,9 +237,9 @@ export default function DebugPage() {
               </div>
               <div className="space-y-3">
                 <div className="flex justify-between items-center py-2 border-b border-slate-200 dark:border-slate-700">
-                  <span className="text-sm text-slate-600 dark:text-slate-400">IP Address</span>
-                  <code className="text-sm font-mono bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded">
-                    {ipAddress}
+                  <span className="text-sm text-slate-600 dark:text-slate-400">User ID</span>
+                  <code className="text-sm font-mono bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded max-w-[200px] truncate">
+                    {userId}
                   </code>
                 </div>
                 <div className="flex justify-between items-center py-2 border-b border-slate-200 dark:border-slate-700">
