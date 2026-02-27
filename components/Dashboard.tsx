@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 import { FileItem } from '@/types';
 import { formatTimeRemaining, getExpirationColor } from '@/lib/expiration-utils';
 import { sanitizeFilename } from '@/lib/filename-utils';
+import { getUserId } from '@/lib/user-id';
 import FileUploadZone from './FileUploadZone';
 import SettingsDialog from './SettingsDialog';
 import PasswordDialog from './PasswordDialog';
@@ -22,11 +23,19 @@ export default function Dashboard() {
   const [isLocked, setIsLocked] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [unlockDialogOpen, setUnlockDialogOpen] = useState(false);
+  const [userId, setUserId] = useState<string>('');
   
   // Use refs to track typing state without causing re-renders
   const isTypingRef = useRef(false);
   const lastTypingTimeRef = useRef(0);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Initialize user ID on mount
+  useEffect(() => {
+    const id = getUserId();
+    setUserId(id);
+    console.log('[Dashboard] User ID initialized:', id);
+  }, []);
 
   // Hash password client-side
   const hashPassword = async (password: string): Promise<string> => {
@@ -39,8 +48,10 @@ export default function Dashboard() {
 
   // Fetch initial data
   const fetchData = useCallback(async () => {
+    if (!userId) return; // Wait for userId to be initialized
+    
     try {
-      const response = await fetch('/api/sync');
+      const response = await fetch(`/api/sync?userId=${encodeURIComponent(userId)}`);
       const result = await response.json();
       
       if (result.success && result.data) {
@@ -65,7 +76,7 @@ export default function Dashboard() {
     } finally {
       setIsLoading(false);
     }
-  }, [isAuthenticated]);
+  }, [userId, isAuthenticated]);
 
   useEffect(() => {
     fetchData();
@@ -92,7 +103,7 @@ export default function Dashboard() {
       const response = await fetch('/api/sync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'verifyPassword', passwordHash: hash }),
+        body: JSON.stringify({ userId, action: 'verifyPassword', passwordHash: hash }),
       });
       
       const result = await response.json();
@@ -122,7 +133,7 @@ export default function Dashboard() {
         await fetch('/api/sync', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'setPassword', passwordHash: hash }),
+          body: JSON.stringify({ userId, action: 'setPassword', passwordHash: hash }),
         });
         setIsLocked(true);
         setIsAuthenticated(true);
@@ -131,7 +142,7 @@ export default function Dashboard() {
         const verifyResponse = await fetch('/api/sync', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'verifyPassword', passwordHash: hash }),
+          body: JSON.stringify({ userId, action: 'verifyPassword', passwordHash: hash }),
         });
         
         const verifyResult = await verifyResponse.json();
@@ -140,7 +151,7 @@ export default function Dashboard() {
           await fetch('/api/sync', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'removePassword' }),
+            body: JSON.stringify({ userId, action: 'removePassword' }),
           });
           setIsLocked(false);
           setIsAuthenticated(false);
@@ -155,14 +166,14 @@ export default function Dashboard() {
 
   // Debounced text update
   useEffect(() => {
-    if (isLoading || !isAuthenticated && isLocked) return;
+    if (isLoading || !isAuthenticated && isLocked || !userId) return;
     
     const timer = setTimeout(async () => {
       try {
         await fetch('/api/sync', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'updateText', text }),
+          body: JSON.stringify({ userId, action: 'updateText', text }),
         });
         // Mark typing as finished after successful sync
         isTypingRef.current = false;
@@ -172,7 +183,7 @@ export default function Dashboard() {
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [text, isLoading, isAuthenticated, isLocked]);
+  }, [text, isLoading, isAuthenticated, isLocked, userId]);
 
   const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setText(e.target.value);
@@ -226,7 +237,7 @@ export default function Dashboard() {
       await fetch('/api/sync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'addFile', file: fileItem }),
+        body: JSON.stringify({ userId, action: 'addFile', file: fileItem }),
       });
       
       setFiles(prev => [...prev, fileItem]);
@@ -358,7 +369,7 @@ export default function Dashboard() {
       const dbResponse = await fetch('/api/sync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'deleteFile', fileId }),
+        body: JSON.stringify({ userId, action: 'deleteFile', fileId }),
       });
 
       if (!dbResponse.ok) {

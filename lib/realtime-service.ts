@@ -14,21 +14,21 @@ export class RealtimeService {
     };
   }
 
-  static async getSyncData(ipAddress: string): Promise<SyncData> {
+  static async getSyncData(userId: string): Promise<SyncData> {
     // Graceful fallback if Supabase is not configured
     if (!supabase) {
       console.warn('[RealtimeService] Supabase is not configured - returning default empty data');
       return this.getDefaultData();
     }
 
-    console.log('[RealtimeService] Fetching data for IP:', ipAddress);
+    console.log('[RealtimeService] Fetching data for user:', userId);
 
     try {
       // Fetch from database
       const { data, error } = await supabase
         .from('sync_data')
         .select('*')
-        .eq('ip_address', ipAddress)
+        .eq('user_id', userId)
         .single();
 
       if (error && error.code !== 'PGRST116') {
@@ -45,7 +45,7 @@ export class RealtimeService {
         const { data: newData, error: insertError } = await supabase
           .from('sync_data')
           .insert({
-            ip_address: ipAddress,
+            user_id: userId,
             text_content: defaultData.text,
             files: defaultData.files,
             created_at: new Date(defaultData.createdAt).toISOString(),
@@ -93,23 +93,23 @@ export class RealtimeService {
     };
   }
 
-  static async updateText(ipAddress: string, text: string): Promise<SyncData> {
+  static async updateText(userId: string, text: string): Promise<SyncData> {
     if (!supabase) {
       console.warn('[RealtimeService] Supabase not configured - cannot update text');
-      const data = await this.getSyncData(ipAddress);
+      const data = await this.getSyncData(userId);
       data.text = text; // Update in memory only
       return data;
     }
 
     try {
-      const data = await this.getSyncData(ipAddress);
+      const data = await this.getSyncData(userId);
       
       const { data: updated, error } = await supabase
         .from('sync_data')
         .update({
           text_content: text,
         })
-        .eq('ip_address', ipAddress)
+        .eq('user_id', userId)
         .select()
         .single();
 
@@ -122,23 +122,23 @@ export class RealtimeService {
       return this.mapDbToSyncData(updated);
     } catch (error) {
       console.error('[RealtimeService] Unexpected error in updateText:', error);
-      const data = await this.getSyncData(ipAddress);
+      const data = await this.getSyncData(userId);
       data.text = text;
       return data;
     }
   }
 
-  static async addFile(ipAddress: string, file: FileItem): Promise<SyncData> {
+  static async addFile(userId: string, file: FileItem): Promise<SyncData> {
     if (!supabase) {
       console.warn('[RealtimeService] Supabase not configured - cannot add file');
-      const data = await this.getSyncData(ipAddress);
+      const data = await this.getSyncData(userId);
       data.files.push(file); // Add to memory only
       return data;
     }
 
     try {
-      console.log('[RealtimeService] Adding file:', file.name, 'for IP:', ipAddress);
-      const data = await this.getSyncData(ipAddress);
+      console.log('[RealtimeService] Adding file:', file.name, 'for user:', userId);
+      const data = await this.getSyncData(userId);
       const updatedFiles = [...data.files, file];
 
       const { data: updated, error } = await supabase
@@ -146,7 +146,7 @@ export class RealtimeService {
         .update({
           files: updatedFiles,
         })
-        .eq('ip_address', ipAddress)
+        .eq('user_id', userId)
         .select()
         .single();
 
@@ -160,22 +160,22 @@ export class RealtimeService {
       return this.mapDbToSyncData(updated);
     } catch (error) {
       console.error('[RealtimeService] Unexpected error in addFile:', error);
-      const data = await this.getSyncData(ipAddress);
+      const data = await this.getSyncData(userId);
       data.files.push(file);
       return data;
     }
   }
 
-  static async deleteFile(ipAddress: string, fileId: string): Promise<SyncData> {
+  static async deleteFile(userId: string, fileId: string): Promise<SyncData> {
     if (!supabase) {
       console.warn('[RealtimeService] Supabase not configured - cannot delete file');
-      const data = await this.getSyncData(ipAddress);
+      const data = await this.getSyncData(userId);
       data.files = data.files.filter(f => f.id !== fileId);
       return data;
     }
 
     try {
-      const data = await this.getSyncData(ipAddress);
+      const data = await this.getSyncData(userId);
       const updatedFiles = data.files.filter(f => f.id !== fileId);
 
       const { data: updated, error } = await supabase
@@ -183,7 +183,7 @@ export class RealtimeService {
         .update({
           files: updatedFiles,
         })
-        .eq('ip_address', ipAddress)
+        .eq('user_id', userId)
         .select()
         .single();
 
@@ -196,16 +196,16 @@ export class RealtimeService {
       return this.mapDbToSyncData(updated);
     } catch (error) {
       console.error('[RealtimeService] Unexpected error in deleteFile:', error);
-      const data = await this.getSyncData(ipAddress);
+      const data = await this.getSyncData(userId);
       data.files = data.files.filter(f => f.id !== fileId);
       return data;
     }
   }
 
-  static async setPassword(ipAddress: string, passwordHash: string): Promise<SyncData> {
+  static async setPassword(userId: string, passwordHash: string): Promise<SyncData> {
     if (!supabase) {
       console.warn('[RealtimeService] Supabase not configured - cannot set password');
-      const data = await this.getSyncData(ipAddress);
+      const data = await this.getSyncData(userId);
       data.passwordHash = passwordHash;
       data.isLocked = true;
       return data;
@@ -218,13 +218,13 @@ export class RealtimeService {
           password_hash: passwordHash,
           is_locked: true,
         })
-        .eq('ip_address', ipAddress)
+        .eq('user_id', userId)
         .select()
         .single();
 
       if (error) {
         console.error('[RealtimeService] Error setting password:', error);
-        const data = await this.getSyncData(ipAddress);
+        const data = await this.getSyncData(userId);
         data.passwordHash = passwordHash;
         data.isLocked = true;
         return data;
@@ -233,36 +233,36 @@ export class RealtimeService {
       return this.mapDbToSyncData(updated);
     } catch (error) {
       console.error('[RealtimeService] Unexpected error in setPassword:', error);
-      const data = await this.getSyncData(ipAddress);
+      const data = await this.getSyncData(userId);
       data.passwordHash = passwordHash;
       data.isLocked = true;
       return data;
     }
   }
 
-  static async removePassword(ipAddress: string): Promise<SyncData> {
+  static async removePassword(userId: string): Promise<SyncData> {
     if (!supabase) {
       console.warn('[RealtimeService] Supabase not configured - cannot remove password');
-      const data = await this.getSyncData(ipAddress);
+      const data = await this.getSyncData(userId);
       data.passwordHash = undefined;
       data.isLocked = false;
       return data;
     }
 
     try {
-      const { data: updated, error } = await supabase
+      const { data: updated, error} = await supabase
         .from('sync_data')
         .update({
           password_hash: null,
           is_locked: false,
         })
-        .eq('ip_address', ipAddress)
+        .eq('user_id', userId)
         .select()
         .single();
 
       if (error) {
         console.error('[RealtimeService] Error removing password:', error);
-        const data = await this.getSyncData(ipAddress);
+        const data = await this.getSyncData(userId);
         data.passwordHash = undefined;
         data.isLocked = false;
         return data;
@@ -271,23 +271,23 @@ export class RealtimeService {
       return this.mapDbToSyncData(updated);
     } catch (error) {
       console.error('[RealtimeService] Unexpected error in removePassword:', error);
-      const data = await this.getSyncData(ipAddress);
+      const data = await this.getSyncData(userId);
       data.passwordHash = undefined;
       data.isLocked = false;
       return data;
     }
   }
 
-  static async verifyPassword(ipAddress: string, passwordHash: string): Promise<boolean> {
-    const data = await this.getSyncData(ipAddress);
+  static async verifyPassword(userId: string, passwordHash: string): Promise<boolean> {
+    const data = await this.getSyncData(userId);
     return data.passwordHash === passwordHash;
   }
   
   /**
-   * Clean up expired files for a specific IP
+   * Clean up expired files for a specific user
    * Returns array of deleted file URLs
    */
-  static async cleanupExpiredFiles(ipAddress: string): Promise<string[]> {
+  static async cleanupExpiredFiles(userId: string): Promise<string[]> {
     if (!supabase) {
       console.warn('[RealtimeService] Supabase not configured - cannot cleanup files');
       return [];
@@ -297,7 +297,7 @@ export class RealtimeService {
       const { data, error } = await supabase
         .from('sync_data')
         .select('*')
-        .eq('ip_address', ipAddress)
+        .eq('user_id', userId)
         .single();
 
       if (error || !data) return [];
@@ -312,7 +312,7 @@ export class RealtimeService {
         await supabase
           .from('sync_data')
           .update({ files: remainingFiles })
-          .eq('ip_address', ipAddress);
+          .eq('user_id', userId);
       }
 
       return expiredUrls;
@@ -323,7 +323,7 @@ export class RealtimeService {
   }
 
   /**
-   * Clean up expired files for all IPs
+   * Clean up expired files for all users
    * Returns array of deleted file URLs
    */
   static async cleanupAllExpiredFiles(): Promise<string[]> {
@@ -344,7 +344,7 @@ export class RealtimeService {
 
       // Process each entry
       for (const dbRow of allData) {
-        const deletedUrls = await this.cleanupExpiredFiles(dbRow.ip_address);
+        const deletedUrls = await this.cleanupExpiredFiles(dbRow.user_id);
         allDeletedUrls.push(...deletedUrls);
       }
 
