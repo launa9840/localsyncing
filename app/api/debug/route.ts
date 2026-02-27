@@ -61,25 +61,52 @@ export async function POST(request: NextRequest) {
 
       case 'resetEverything':
         // Delete everything for this IP
-        const allData = await RealtimeService.getSyncData(ipAddress);
-        
-        // Note: Cloudinary files are not deleted - they expire automatically
         console.log('[Debug] Resetting everything for IP:', ipAddress);
 
-        // Remove password
-        await RealtimeService.removePassword(ipAddress);
-        
-        // Clear all data
-        const resetData = await RealtimeService.getSyncData(ipAddress);
-        resetData.text = '';
-        resetData.files = [];
-        resetData.passwordHash = undefined;
-        resetData.isLocked = false;
-        
-        return NextResponse.json({
-          success: true,
-          message: 'Everything has been reset and deleted',
-        });
+        try {
+          // Import supabase
+          const { supabase } = await import('@/lib/supabase');
+          
+          if (!supabase) {
+            return NextResponse.json({
+              success: false,
+              error: 'Database not configured',
+            }, { status: 500 });
+          }
+
+          // Update database directly - clear everything
+          const { error } = await supabase
+            .from('sync_data')
+            .update({
+              text_content: '',
+              files: [],
+              password_hash: null,
+              is_locked: false,
+              last_updated: new Date().toISOString(),
+            })
+            .eq('ip_address', ipAddress);
+
+          if (error) {
+            console.error('[Debug] Error clearing data:', error);
+            return NextResponse.json({
+              success: false,
+              error: 'Failed to clear data from database',
+            }, { status: 500 });
+          }
+
+          console.log('[Debug] Successfully cleared all data for IP:', ipAddress);
+          
+          return NextResponse.json({
+            success: true,
+            message: 'Everything has been reset and deleted',
+          });
+        } catch (error) {
+          console.error('[Debug] Exception in resetEverything:', error);
+          return NextResponse.json({
+            success: false,
+            error: error instanceof Error ? error.message : 'Unknown error',
+          }, { status: 500 });
+        }
 
       case 'getStats':
         // Get statistics for this IP
