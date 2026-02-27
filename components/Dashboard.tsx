@@ -168,7 +168,8 @@ export default function Dashboard() {
 
   // Debounced text update
   useEffect(() => {
-    if (isLoading || !isAuthenticated && isLocked || !userId) return;
+    if (isLoading || !userId) return;
+    if (isLocked && !isAuthenticated) return; // Only skip if locked AND not authenticated
     
     const timer = setTimeout(async () => {
       try {
@@ -185,7 +186,7 @@ export default function Dashboard() {
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [text, isLoading, isAuthenticated, isLocked, userId]);
+  }, [text, isLoading, isLocked, isAuthenticated, userId]);
 
   const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setText(e.target.value);
