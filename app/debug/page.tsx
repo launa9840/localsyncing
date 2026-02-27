@@ -74,6 +74,10 @@ export default function DebugPage() {
     }
   };
 
+  const handleRefresh = () => {
+    fetchDebugInfo();
+  };
+
   const handleClearData = async () => {
     if (!confirm('Are you sure you want to clear all data? This cannot be undone.')) return;
     
@@ -87,7 +91,7 @@ export default function DebugPage() {
 
       if (response.ok) {
         toast.success('All data cleared successfully');
-        fetchDebugInfo();
+        handleRefresh();
       }
     } catch (error) {
       toast.error('Failed to clear data');
@@ -145,7 +149,7 @@ export default function DebugPage() {
               </p>
             </div>
             <div className="flex gap-2">
-              <Button onClick={fetchDebugInfo} variant="outline" size="sm" disabled={refreshing}>
+              <Button onClick={handleRefresh} variant="outline" size="sm" disabled={refreshing}>
                 <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
                 {refreshing ? 'Refreshing...' : 'Refresh'}
               </Button>
@@ -332,7 +336,7 @@ export default function DebugPage() {
               </div>
               <div className="space-y-3">
                 <Button 
-                  onClick={fetchDebugInfo} 
+                  onClick={handleRefresh} 
                   className="w-full justify-start" 
                   variant="outline"
                   disabled={refreshing}
