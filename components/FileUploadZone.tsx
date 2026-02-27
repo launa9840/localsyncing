@@ -23,7 +23,7 @@ export default function FileUploadZone({ onFileUpload }: FileUploadZoneProps) {
     <div className="border-2 border-dashed rounded-lg p-8 text-center transition-colors border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 hover:border-slate-400 dark:hover:border-slate-500">
       <Upload className="h-10 w-10 mx-auto mb-3 text-slate-400 dark:text-slate-500" />
       <p className="text-sm text-slate-600 dark:text-slate-300 mb-3">
-        Upload files to Cloudinary (up to 100MB)
+        Upload files (up to 100MB)
       </p>
       <CloudinaryUpload onUploadSuccess={handleCloudinaryUpload} />
       <p className="text-xs text-slate-500 dark:text-slate-500 mt-3">
