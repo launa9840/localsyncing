@@ -168,24 +168,46 @@ export default function Dashboard() {
 
   // Debounced text update
   useEffect(() => {
-    if (isLoading || !userId) return;
-    if (isLocked && !isAuthenticated) return; // Only skip if locked AND not authenticated
+    console.log('[Dashboard] Text update effect triggered:', {
+      isLoading,
+      userId,
+      isLocked,
+      isAuthenticated,
+      textLength: text.length,
+    });
     
+    if (isLoading || !userId) {
+      console.log('[Dashboard] Skipping save - loading or no userId');
+      return;
+    }
+    if (isLocked && !isAuthenticated) {
+      console.log('[Dashboard] Skipping save - locked and not authenticated');
+      return;
+    }
+    
+    console.log('[Dashboard] Setting timer to save text in 500ms');
     const timer = setTimeout(async () => {
       try {
-        await fetch('/api/sync', {
+        console.log('[Dashboard] Sending POST request to save text:', text.substring(0, 50));
+        const response = await fetch('/api/sync', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ userId, action: 'updateText', text }),
         });
+        const result = await response.json();
+        console.log('[Dashboard] Save response:', result);
         // Mark typing as finished after successful sync
         isTypingRef.current = false;
       } catch (error) {
+        console.error('[Dashboard] Save error:', error);
         toast.error('Failed to sync text');
       }
     }, 500);
 
-    return () => clearTimeout(timer);
+    return () => {
+      console.log('[Dashboard] Clearing save timer');
+      clearTimeout(timer);
+    };
   }, [text, isLoading, isLocked, isAuthenticated, userId]);
 
   const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
