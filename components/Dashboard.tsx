@@ -5,20 +5,18 @@ import { Card } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Copy, Settings, Download, Trash2, Lock, FileText, HardDrive, CheckCircle2, Upload as UploadIcon, Clock } from 'lucide-react';
+import { Copy, Download, Trash2, Lock, FileText, HardDrive, CheckCircle2, Upload as UploadIcon, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 import { FileItem } from '@/types';
 import { formatTimeRemaining, getExpirationColor } from '@/lib/expiration-utils';
 import { sanitizeFilename } from '@/lib/filename-utils';
 import FileUploadZone from './FileUploadZone';
-import SettingsDialog from './SettingsDialog';
 import PasswordDialog from './PasswordDialog';
 
 export default function Dashboard() {
   const [text, setText] = useState('');
   const [files, setFiles] = useState<FileItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [settingsOpen, setSettingsOpen] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [unlockDialogOpen, setUnlockDialogOpen] = useState(false);
@@ -107,49 +105,6 @@ export default function Dashboard() {
       }
     } catch (error) {
       toast.error('Failed to verify password');
-    }
-  };
-
-  // Handle password change
-  const handlePasswordChange = async (enabled: boolean, password?: string) => {
-    if (!password) return;
-    
-    try {
-      const hash = await hashPassword(password);
-      
-      if (enabled) {
-        // Set password
-        await fetch('/api/sync', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'setPassword', passwordHash: hash }),
-        });
-        setIsLocked(true);
-        setIsAuthenticated(true);
-      } else {
-        // Verify current password before removing
-        const verifyResponse = await fetch('/api/sync', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'verifyPassword', passwordHash: hash }),
-        });
-        
-        const verifyResult = await verifyResponse.json();
-        
-        if (verifyResult.success && verifyResult.data.isValid) {
-          await fetch('/api/sync', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'removePassword' }),
-          });
-          setIsLocked(false);
-          setIsAuthenticated(false);
-        } else {
-          toast.error('Incorrect password');
-        }
-      }
-    } catch (error) {
-      toast.error('Failed to update password');
     }
   };
 
@@ -423,23 +378,13 @@ export default function Dashboard() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header with Stats */}
         <div className="mb-8">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-            <div>
-              <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100">
-                Your Clipboard
-              </h1>
-              <p className="text-slate-600 dark:text-slate-400 mt-1">
-                Sync text and files across your local network
-              </p>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setSettingsOpen(true)}
-            >
-              <Settings className="h-4 w-4 mr-2" />
-              Settings
-            </Button>
+          <div className="mb-6">
+            <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100">
+              Your Clipboard
+            </h1>
+            <p className="text-slate-600 dark:text-slate-400 mt-1">
+              Sync text and files across your local network
+            </p>
           </div>
 
           {/* Status Cards */}
@@ -503,12 +448,6 @@ export default function Dashboard() {
                   <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
                     Shared Text
                   </h2>
-                  {isLocked && (
-                    <Badge variant="secondary" className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">
-                      <Lock className="h-3 w-3 mr-1" />
-                      Protected
-                    </Badge>
-                  )}
                 </div>
                 <Button
                   variant="outline"
@@ -605,13 +544,6 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
-
-      <SettingsDialog 
-        open={settingsOpen} 
-        onOpenChange={setSettingsOpen}
-        isLocked={isLocked}
-        onPasswordChange={handlePasswordChange}
-      />
     </>
   );
 }
