@@ -79,12 +79,14 @@ export default function Dashboard() {
   }, [userId, isAuthenticated]);
 
   useEffect(() => {
+    if (!userId) return; // Don't start polling until userId is ready
+    
     fetchData();
     
     // Poll for updates every 2 seconds
     const interval = setInterval(fetchData, 2000);
     return () => clearInterval(interval);
-  }, [fetchData]);
+  }, [fetchData, userId]);
 
   // Refresh countdown timers every minute
   const [, setTimerTick] = useState(0);
