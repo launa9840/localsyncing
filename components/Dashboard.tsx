@@ -52,20 +52,25 @@ export default function Dashboard() {
           return;
         }
         
-        // Only update text if user hasn't typed recently
+        // Only update text if user hasn't typed recently AND text is different
         const timeSinceLastTyping = Date.now() - lastTypingTimeRef.current;
         if (!isTypingRef.current && timeSinceLastTyping > 3000) {
-          setText(result.data.text);
+          // Only update if the text from server is different
+          if (result.data.text !== text) {
+            console.log('[Dashboard] Updating text from server');
+            setText(result.data.text);
+          }
         }
         
         setFiles(result.data.files);
       }
     } catch (error) {
+      console.error('[Dashboard] Failed to load data:', error);
       toast.error('Failed to load data');
     } finally {
       setIsLoading(false);
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, text]);
 
   useEffect(() => {
     fetchData();
@@ -166,14 +171,20 @@ export default function Dashboard() {
     
     const timer = setTimeout(async () => {
       try {
-        await fetch('/api/sync', {
+        const response = await fetch('/api/sync', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ action: 'updateText', text }),
         });
+        
+        if (response.ok) {
+          console.log('[Dashboard] Text saved successfully');
+        }
+        
         // Mark typing as finished after successful sync
         isTypingRef.current = false;
       } catch (error) {
+        console.error('[Dashboard] Failed to sync text:', error);
         toast.error('Failed to sync text');
       }
     }, 500);
