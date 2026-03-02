@@ -96,8 +96,8 @@ export default function AllFeaturesGrid() {
                 className="p-4 sm:p-6 hover:shadow-lg transition-shadow duration-300 bg-slate-50 dark:bg-slate-700 border-slate-200 dark:border-slate-600"
               >
                 <div className="flex items-start gap-3 sm:gap-4">
-                  <div className="flex-shrink-0">
-                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center">
+                  <div className="shrink-0">
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-linear-to-br from-orange-500 to-red-500 flex items-center justify-center">
                       <Icon className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
                     </div>
                   </div>
