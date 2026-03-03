@@ -5,7 +5,7 @@ import { Card } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Copy, Settings, Download, Trash2, Lock, FileText, HardDrive, CheckCircle2, Upload as UploadIcon, Clock } from 'lucide-react';
+import { Copy, Settings, Download, Trash2, Lock, FileText, HardDrive, CheckCircle2, Upload as UploadIcon, Clock, Network } from 'lucide-react';
 import { toast } from 'sonner';
 import { FileItem } from '@/types';
 import { formatTimeRemaining, getExpirationColor } from '@/lib/expiration-utils';
