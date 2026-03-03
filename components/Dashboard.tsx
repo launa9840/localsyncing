@@ -41,8 +41,21 @@ export default function Dashboard() {
   // Fetch initial data
   const fetchData = useCallback(async () => {
     try {
+      console.log('[Dashboard] 📥 Fetching data from server...', {
+        timestamp: new Date().toISOString(),
+      });
+      
       const response = await fetch('/api/sync');
       const result = await response.json();
+      
+      console.log('[Dashboard] 📦 Received data:', {
+        success: result.success,
+        textLength: result.data?.text?.length || 0,
+        filesCount: result.data?.files?.length || 0,
+        isLocked: result.data?.isLocked,
+        ip: result.ip,
+        timestamp: new Date().toISOString(),
+      });
       
       if (result.success && result.data) {
         setIsLocked(result.data.isLocked || false);
@@ -50,28 +63,39 @@ export default function Dashboard() {
         // Update current IP for display
         if (result.ip) {
           setCurrentIp(result.ip);
+          console.log('[Dashboard] 🌐 Current IP:', result.ip);
         }
         
         // If locked and not authenticated, show unlock dialog
         if (result.data.isLocked && !isAuthenticated) {
+          console.log('[Dashboard] 🔒 Clipboard is locked, showing unlock dialog');
           setUnlockDialogOpen(true);
           return;
         }
         
         // Only update text if user hasn't typed recently AND text is different
         const timeSinceLastTyping = Date.now() - lastTypingTimeRef.current;
-        if (!isTypingRef.current && timeSinceLastTyping > 3000) {
-          // Only update if the text from server is different
-          if (result.data.text !== text) {
-            console.log('[Dashboard] Updating text from server');
-            setText(result.data.text);
-          }
+        const shouldUpdateText = !isTypingRef.current && timeSinceLastTyping > 3000;
+        const textChanged = result.data.text !== text;
+        
+        console.log('[Dashboard] 📝 Text update decision:', {
+          shouldUpdateText,
+          textChanged,
+          timeSinceLastTyping,
+          isTyping: isTypingRef.current,
+          currentTextLength: text.length,
+          serverTextLength: result.data.text.length,
+        });
+        
+        if (shouldUpdateText && textChanged) {
+          console.log('[Dashboard] ✏️ Updating text from server');
+          setText(result.data.text);
         }
         
         setFiles(result.data.files);
       }
     } catch (error) {
-      console.error('[Dashboard] Failed to load data:', error);
+      console.error('[Dashboard] ❌ Failed to load data:', error);
       toast.error('Failed to load data');
     } finally {
       setIsLoading(false);
@@ -177,20 +201,34 @@ export default function Dashboard() {
     
     const timer = setTimeout(async () => {
       try {
+        console.log('[Dashboard] 🔄 Saving text to server...', {
+          textLength: text.length,
+          textPreview: text.substring(0, 50),
+          timestamp: new Date().toISOString(),
+        });
+        
         const response = await fetch('/api/sync', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ action: 'updateText', text }),
         });
         
-        if (response.ok) {
-          console.log('[Dashboard] Text saved successfully');
+        const result = await response.json();
+        
+        if (response.ok && result.success) {
+          console.log('[Dashboard] ✅ Text saved successfully', {
+            savedTextLength: result.data?.text?.length,
+            timestamp: new Date().toISOString(),
+          });
+        } else {
+          console.error('[Dashboard] ❌ Failed to save text:', result.error);
+          toast.error('Failed to save text: ' + result.error);
         }
         
         // Mark typing as finished after successful sync
         isTypingRef.current = false;
       } catch (error) {
-        console.error('[Dashboard] Failed to sync text:', error);
+        console.error('[Dashboard] ❌ Exception while saving text:', error);
         toast.error('Failed to sync text');
       }
     }, 500);

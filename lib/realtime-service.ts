@@ -119,33 +119,49 @@ export class RealtimeService {
 
   static async updateText(ipAddress: string, text: string): Promise<SyncData> {
     if (!supabase) {
-      console.warn('[RealtimeService] Supabase not configured - cannot update text');
+      console.warn('[RealtimeService] ⚠️ Supabase not configured - cannot update text');
       const data = await this.getSyncData(ipAddress);
       data.text = text; // Update in memory only
       return data;
     }
 
     try {
+      console.log('[RealtimeService] 💾 Updating text in database:', {
+        ip: ipAddress,
+        textLength: text.length,
+        timestamp: new Date().toISOString(),
+      });
+      
       const data = await this.getSyncData(ipAddress);
       
       const { data: updated, error } = await supabase
         .from('sync_data')
         .update({
           text_content: text,
+          last_updated: new Date().toISOString(),
         })
         .eq('ip_address', ipAddress)
         .select()
         .single();
 
       if (error) {
-        console.error('[RealtimeService] Error updating text:', error);
+        console.error('[RealtimeService] ❌ Error updating text:', {
+          error: error.message,
+          code: error.code,
+          details: error.details,
+        });
         data.text = text; // Fallback to in-memory update
         return data;
       }
 
+      console.log('[RealtimeService] ✅ Text updated in database successfully:', {
+        ip: ipAddress,
+        savedTextLength: updated.text_content?.length || 0,
+      });
+
       return this.mapDbToSyncData(updated);
     } catch (error) {
-      console.error('[RealtimeService] Unexpected error in updateText:', error);
+      console.error('[RealtimeService] ❌ Unexpected error in updateText:', error);
       const data = await this.getSyncData(ipAddress);
       data.text = text;
       return data;

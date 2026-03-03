@@ -38,13 +38,25 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { action } = body;
     
-    console.log('[API] POST action:', action, 'for IP:', ipAddress);
+    console.log('[API POST] 📨 Received request:', {
+      action,
+      ip: ipAddress,
+      timestamp: new Date().toISOString(),
+      bodyKeys: Object.keys(body),
+    });
     
     let data: SyncData;
     
     if (action === 'updateText') {
-      console.log('[API] Updating text, length:', body.text.length);
+      console.log('[API POST] 💾 Updating text:', {
+        ip: ipAddress,
+        textLength: body.text.length,
+        textPreview: body.text.substring(0, 50),
+      });
       data = await RealtimeService.updateText(ipAddress, body.text);
+      console.log('[API POST] ✅ Text updated successfully:', {
+        savedTextLength: data.text.length,
+      });
     } else if (action === 'addFile') {
       console.log('[API] Adding file:', body.file.name);
       data = await RealtimeService.addFile(ipAddress, body.file);
