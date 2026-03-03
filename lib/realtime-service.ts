@@ -132,17 +132,19 @@ export class RealtimeService {
         timestamp: new Date().toISOString(),
       });
       
-      // Use UPSERT instead of separate INSERT/UPDATE
-      // This ensures the row exists and gets updated in one operation
+      // First, get existing data to preserve files
+      const existingData = await this.getSyncData(ipAddress);
+      
+      // Use UPSERT but preserve existing files
       const { data: updated, error } = await supabase
         .from('sync_data')
         .upsert({
           ip_address: ipAddress,
           text_content: text,
-          files: [],
+          files: existingData.files, // Preserve existing files!
           created_at: new Date().toISOString(),
           last_updated: new Date().toISOString(),
-          is_locked: false,
+          is_locked: existingData.isLocked || false,
         }, {
           onConflict: 'ip_address',
           ignoreDuplicates: false,
