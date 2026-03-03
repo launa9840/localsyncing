@@ -22,6 +22,7 @@ export default function Dashboard() {
   const [isLocked, setIsLocked] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [unlockDialogOpen, setUnlockDialogOpen] = useState(false);
+  const [currentIp, setCurrentIp] = useState<string>('Loading...');
   
   // Use refs to track typing state without causing re-renders
   const isTypingRef = useRef(false);
@@ -45,6 +46,11 @@ export default function Dashboard() {
       
       if (result.success && result.data) {
         setIsLocked(result.data.isLocked || false);
+        
+        // Update current IP for display
+        if (result.ip) {
+          setCurrentIp(result.ip);
+        }
         
         // If locked and not authenticated, show unlock dialog
         if (result.data.isLocked && !isAuthenticated) {
@@ -619,6 +625,17 @@ export default function Dashboard() {
                 </div>
               </Card>
             )}
+          </div>
+        </div>
+      </div>
+
+      {/* IP Display Footer */}
+      <div className="fixed bottom-4 right-4 z-50">
+        <div className="bg-slate-800 dark:bg-slate-900 text-white px-4 py-2 rounded-lg shadow-lg border border-slate-700">
+          <div className="flex items-center gap-2 text-sm">
+            <Network className="h-4 w-4 text-green-400" />
+            <span className="text-slate-300">Sync IP:</span>
+            <code className="font-mono font-semibold text-green-400">{currentIp}</code>
           </div>
         </div>
       </div>

@@ -1,21 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { RealtimeService } from '@/lib/realtime-service';
 import { ApiResponse, SyncData } from '@/types';
-
-function getClientIp(request: NextRequest): string {
-  const forwarded = request.headers.get('x-forwarded-for');
-  const realIp = request.headers.get('x-real-ip');
-  
-  if (forwarded) {
-    return forwarded.split(',')[0].trim();
-  }
-  
-  if (realIp) {
-    return realIp;
-  }
-  
-  return '127.0.0.1';
-}
+import { getClientIp } from '@/lib/ip-utils';
 
 export async function GET(request: NextRequest) {
   try {
@@ -32,6 +18,7 @@ export async function GET(request: NextRequest) {
     const response: ApiResponse<SyncData> = {
       success: true,
       data,
+      ip: ipAddress, // Include IP in response for UI display
     };
     
     return NextResponse.json(response);
