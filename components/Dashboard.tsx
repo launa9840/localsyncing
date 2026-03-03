@@ -105,8 +105,16 @@ export default function Dashboard() {
   useEffect(() => {
     fetchData();
     
-    // Poll for updates every 2 seconds
-    const interval = setInterval(fetchData, 2000);
+    // Poll for updates every 2 seconds, but ONLY if user is not typing
+    const interval = setInterval(() => {
+      // Don't fetch if user typed in the last 5 seconds
+      const timeSinceLastTyping = Date.now() - lastTypingTimeRef.current;
+      if (timeSinceLastTyping > 5000) {
+        fetchData();
+      } else {
+        console.log('[Dashboard] ⏸️ Skipping fetch - user is typing');
+      }
+    }, 2000);
     return () => clearInterval(interval);
   }, [fetchData]);
 
