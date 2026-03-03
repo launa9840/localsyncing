@@ -132,15 +132,21 @@ export class RealtimeService {
         timestamp: new Date().toISOString(),
       });
       
-      const data = await this.getSyncData(ipAddress);
-      
+      // Use UPSERT instead of separate INSERT/UPDATE
+      // This ensures the row exists and gets updated in one operation
       const { data: updated, error } = await supabase
         .from('sync_data')
-        .update({
+        .upsert({
+          ip_address: ipAddress,
           text_content: text,
+          files: [],
+          created_at: new Date().toISOString(),
           last_updated: new Date().toISOString(),
+          is_locked: false,
+        }, {
+          onConflict: 'ip_address',
+          ignoreDuplicates: false,
         })
-        .eq('ip_address', ipAddress)
         .select()
         .single();
 
@@ -149,8 +155,10 @@ export class RealtimeService {
           error: error.message,
           code: error.code,
           details: error.details,
+          hint: error.hint,
         });
-        data.text = text; // Fallback to in-memory update
+        const data = await this.getSyncData(ipAddress);
+        data.text = text;
         return data;
       }
 
